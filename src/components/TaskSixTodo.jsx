@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import {
   createLocalTask,
   createLocalTaskList,
+  deleteLocalTask,
   getSavedSession,
   getWorkspace,
   loginDemoUser,
@@ -12,6 +13,7 @@ import {
   updateLocalTask,
 } from '../services/localDb.js';
 import {
+  deleteFirebaseDocument,
   firebaseLogin,
   firebaseSignUp,
   getFirebaseDocument,
@@ -21,6 +23,7 @@ import {
 } from '../services/firebaseRest.js';
 
 const priorities = ['High', 'Medium', 'Low'];
+
 const emptyTaskForm = {
   title: '',
   description: '',
@@ -29,7 +32,9 @@ const emptyTaskForm = {
 };
 
 function makeId(prefix) {
-  const id = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+  const id =
+    globalThis.crypto?.randomUUID?.() ??
+    `${Date.now()}-${Math.random().toString(16).slice(2)}`;
   return `${prefix}-${id}`;
 }
 
@@ -42,6 +47,14 @@ async function getPublicIp() {
   } catch {
     return 'Unavailable';
   }
+}
+
+function normaliseTask(task) {
+  return {
+    completed: false,
+    completedAt: '',
+    ...task,
+  };
 }
 
 export default function TaskSixTodo() {
@@ -57,12 +70,15 @@ export default function TaskSixTodo() {
   const [loading, setLoading] = useState(false);
   const [draggedTask, setDraggedTask] = useState(null);
   const [activeDropZone, setActiveDropZone] = useState('');
+  const [editingTaskId, setEditingTaskId] = useState(null);
+  const [editTaskForm, setEditTaskForm] = useState(emptyTaskForm);
 
   const user = session?.user ?? null;
   const isCloudSession = session?.mode === 'firebase';
 
   const tasksByListAndPriority = useMemo(() => {
-    return tasks.reduce((grouped, task) => {
+    return tasks.reduce((grouped, rawTask) => {
+      const task = normaliseTask(rawTask);
       const key = `${task.listId}:${task.priority}`;
       grouped[key] = [...(grouped[key] ?? []), task];
       return grouped;
@@ -72,7 +88,7 @@ export default function TaskSixTodo() {
   useEffect(() => {
     if (!session?.user) return;
     loadWorkspace(session);
-    // Session is restored only once when the component opens.
+    // Restore the saved session only once when Task 6 opens.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -96,19 +112,21 @@ export default function TaskSixTodo() {
             activeSession.idToken,
           ),
         ]);
+
+        const safeTasks = ownedTasks.map(normaliseTask);
         setTaskLists(ownedLists);
-        setTasks(ownedTasks);
-        replaceUserWorkspace(activeSession.user.id, ownedLists, ownedTasks);
+        setTasks(safeTasks);
+        replaceUserWorkspace(activeSession.user.id, ownedLists, safeTasks);
       } else {
         const workspace = getWorkspace(activeSession.user.id);
         setTaskLists(workspace.taskLists);
-        setTasks(workspace.tasks);
+        setTasks(workspace.tasks.map(normaliseTask));
       }
     } catch (workspaceError) {
       setError(`Could not load the workspace: ${workspaceError.message}`);
       const workspace = getWorkspace(activeSession.user.id);
       setTaskLists(workspace.taskLists);
-      setTasks(workspace.tasks);
+      setTasks(workspace.tasks.map(normaliseTask));
     } finally {
       setLoading(false);
     }
@@ -123,17 +141,21 @@ export default function TaskSixTodo() {
     try {
       const email = credentials.email.trim().toLowerCase();
       const password = credentials.password;
+
       if (!email || password.length < 6) {
         throw new Error('Enter a valid email and a password of at least 6 characters.');
       }
 
       let nextSession;
+
       if (isFirebaseConfigured) {
         const authResult =
           authMode === 'signup'
             ? await firebaseSignUp(email, password)
             : await firebaseLogin(email, password);
+
         let cloudUser;
+
         if (authMode === 'signup') {
           cloudUser = {
             id: authResult.localId,
@@ -163,6 +185,7 @@ export default function TaskSixTodo() {
             await saveFirebaseDocument('users', cloudUser.id, cloudUser, authResult.idToken);
           }
         }
+
         mirrorCloudUser(cloudUser);
         nextSession = {
           mode: 'firebase',
@@ -194,6 +217,8 @@ export default function TaskSixTodo() {
     saveSession(null);
     setTaskLists([]);
     setTasks([]);
+    setEditingTaskId(null);
+    setEditTaskForm(emptyTaskForm);
     setMessage('You have been logged out.');
     setError('');
   }
@@ -202,15 +227,19 @@ export default function TaskSixTodo() {
     event.preventDefault();
     const title = newListTitle.trim();
     if (!title || !user) return;
+
     setLoading(true);
     setError('');
+    setMessage('');
 
     try {
       const listId = makeId('list');
       const localList = createLocalTaskList(user, title, listId);
+
       if (isCloudSession) {
         await saveFirebaseDocument('taskLists', listId, localList, session.idToken);
       }
+
       setTaskLists((current) => [...current, localList]);
       setNewListTitle('');
       setMessage(`“${title}” was created.`);
@@ -235,25 +264,26 @@ export default function TaskSixTodo() {
   async function handleCreateTask(event, listId) {
     event.preventDefault();
     const form = { ...emptyTaskForm, ...(taskForms[listId] ?? {}) };
+
     if (!form.title.trim() || !user) {
       setError('Task title is required.');
       return;
     }
+
     setLoading(true);
     setError('');
+    setMessage('');
 
     try {
       const taskId = makeId('task');
       const localTask = createLocalTask(user, listId, form, taskId);
+
       if (isCloudSession) {
         await saveFirebaseDocument('tasks', taskId, localTask, session.idToken);
       }
+
       setTasks((current) => [...current, localTask]);
-      setTaskLists((current) =>
-        current.map((list) =>
-          list.id === listId ? { ...list, updatedAt: localTask.updatedAt } : list,
-        ),
-      );
+      updateListTimestamp(listId, localTask.updatedAt);
       setTaskForms((current) => ({ ...current, [listId]: emptyTaskForm }));
       setMessage(`Task “${localTask.title}” was added.`);
     } catch (taskError) {
@@ -263,25 +293,163 @@ export default function TaskSixTodo() {
     }
   }
 
+  function updateListTimestamp(listId, updatedAt) {
+    setTaskLists((current) =>
+      current.map((list) => (list.id === listId ? { ...list, updatedAt } : list)),
+    );
+  }
+
+  function beginEditing(task) {
+    setEditingTaskId(task.id);
+    setEditTaskForm({
+      title: task.title,
+      description: task.description || '',
+      dueDate: task.dueDate || '',
+      priority: task.priority || 'Medium',
+    });
+    setError('');
+    setMessage('');
+  }
+
+  function cancelEditing() {
+    setEditingTaskId(null);
+    setEditTaskForm(emptyTaskForm);
+  }
+
+  async function handleSaveEdit(event, task) {
+    event.preventDefault();
+
+    const title = editTaskForm.title.trim();
+    if (!title) {
+      setError('Task title is required.');
+      return;
+    }
+
+    setLoading(true);
+    setError('');
+    setMessage('');
+
+    try {
+      const savedTask = updateLocalTask(task.id, {
+        title,
+        description: editTaskForm.description.trim(),
+        dueDate: editTaskForm.dueDate,
+        priority: editTaskForm.priority,
+      });
+
+      if (isCloudSession) {
+        await saveFirebaseDocument('tasks', savedTask.id, savedTask, session.idToken);
+      }
+
+      setTasks((current) =>
+        current.map((currentTask) =>
+          currentTask.id === savedTask.id ? normaliseTask(savedTask) : currentTask,
+        ),
+      );
+      updateListTimestamp(savedTask.listId, savedTask.updatedAt);
+      cancelEditing();
+      setMessage(`Task “${savedTask.title}” was updated.`);
+    } catch (editError) {
+      setError(`Task update failed: ${editError.message}`);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleToggleComplete(task) {
+    const nextCompleted = !task.completed;
+    setLoading(true);
+    setError('');
+    setMessage('');
+
+    try {
+      const savedTask = updateLocalTask(task.id, {
+        completed: nextCompleted,
+        completedAt: nextCompleted ? new Date().toISOString() : '',
+      });
+
+      if (isCloudSession) {
+        await saveFirebaseDocument('tasks', savedTask.id, savedTask, session.idToken);
+      }
+
+      setTasks((current) =>
+        current.map((currentTask) =>
+          currentTask.id === savedTask.id ? normaliseTask(savedTask) : currentTask,
+        ),
+      );
+      updateListTimestamp(savedTask.listId, savedTask.updatedAt);
+      setMessage(
+        nextCompleted
+          ? `Task “${savedTask.title}” was marked complete.`
+          : `Task “${savedTask.title}” was reopened.`,
+      );
+    } catch (completeError) {
+      setError(`Could not update task status: ${completeError.message}`);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleDeleteTask(task) {
+    const shouldDelete = window.confirm(
+      `Delete “${task.title}”? This action cannot be undone.`,
+    );
+    if (!shouldDelete) return;
+
+    setLoading(true);
+    setError('');
+    setMessage('');
+
+    try {
+      if (isCloudSession) {
+        await deleteFirebaseDocument('tasks', task.id, session.idToken);
+      }
+
+      const result = deleteLocalTask(task.id);
+      setTasks((current) => current.filter((currentTask) => currentTask.id !== task.id));
+      updateListTimestamp(task.listId, result.updatedAt);
+
+      if (editingTaskId === task.id) cancelEditing();
+      setMessage(`Task “${task.title}” was deleted.`);
+    } catch (deleteError) {
+      setError(`Task deletion failed: ${deleteError.message}`);
+    } finally {
+      setLoading(false);
+    }
+  }
+
   async function moveTask(taskId, listId, priority) {
     const original = tasks.find((task) => task.id === taskId);
-    if (!original || (original.listId === listId && original.priority === priority)) return;
+
+    if (!original || (original.listId === listId && original.priority === priority)) {
+      return;
+    }
 
     const optimisticTask = {
-      ...original,
+      ...normaliseTask(original),
       listId,
       priority,
       updatedAt: new Date().toISOString(),
     };
-    setTasks((current) => current.map((task) => (task.id === taskId ? optimisticTask : task)));
+
+    setTasks((current) =>
+      current.map((task) => (task.id === taskId ? optimisticTask : task)),
+    );
     setError('');
+    setMessage('');
 
     try {
       const savedTask = updateLocalTask(taskId, { listId, priority });
+
       if (isCloudSession) {
         await saveFirebaseDocument('tasks', taskId, savedTask, session.idToken);
       }
-      setTasks((current) => current.map((task) => (task.id === taskId ? savedTask : task)));
+
+      setTasks((current) =>
+        current.map((task) =>
+          task.id === taskId ? normaliseTask(savedTask) : task,
+        ),
+      );
       setTaskLists((current) =>
         current.map((list) =>
           list.id === original.listId || list.id === savedTask.listId
@@ -289,8 +457,11 @@ export default function TaskSixTodo() {
             : list,
         ),
       );
+      setMessage(`Task “${savedTask.title}” was moved.`);
     } catch (moveError) {
-      setTasks((current) => current.map((task) => (task.id === taskId ? original : task)));
+      setTasks((current) =>
+        current.map((task) => (task.id === taskId ? original : task)),
+      );
       setError(`Task move failed: ${moveError.message}`);
     }
   }
@@ -298,11 +469,13 @@ export default function TaskSixTodo() {
   function handleDrop(event, listId, priority) {
     event.preventDefault();
     let payload = draggedTask;
+
     try {
       payload = JSON.parse(event.dataTransfer.getData('application/json'));
     } catch {
-      // The React state fallback is used when transfer data is unavailable.
+      // Use React state when dataTransfer is unavailable.
     }
+
     if (payload?.taskId) moveTask(payload.taskId, listId, priority);
     setDraggedTask(null);
     setActiveDropZone('');
@@ -375,6 +548,7 @@ export default function TaskSixTodo() {
             <button className="button" type="submit" disabled={loading}>
               {loading ? 'Please wait…' : authMode === 'signup' ? 'Create account' : 'Log in'}
             </button>
+
             {error && <p className="form-alert is-error">{error}</p>}
             {message && <p className="form-alert is-success">{message}</p>}
           </form>
@@ -421,7 +595,8 @@ export default function TaskSixTodo() {
       ) : (
         <div className="todo-lists-grid">
           {taskLists.map((list) => {
-            const listTaskCount = tasks.filter((task) => task.listId === list.id).length;
+            const listTasks = tasks.filter((task) => task.listId === list.id);
+            const completedCount = listTasks.filter((task) => task.completed).length;
             const form = { ...emptyTaskForm, ...(taskForms[list.id] ?? {}) };
 
             return (
@@ -429,12 +604,18 @@ export default function TaskSixTodo() {
                 <header>
                   <div>
                     <h3>{list.title}</h3>
-                    <span>{listTaskCount} task{listTaskCount === 1 ? '' : 's'}</span>
+                    <span>
+                      {listTasks.length} task{listTasks.length === 1 ? '' : 's'} ·{' '}
+                      {completedCount} completed
+                    </span>
                   </div>
                   <small>Updated {new Date(list.updatedAt).toLocaleString()}</small>
                 </header>
 
-                <form className="task-create-form" onSubmit={(event) => handleCreateTask(event, list.id)}>
+                <form
+                  className="task-create-form"
+                  onSubmit={(event) => handleCreateTask(event, list.id)}
+                >
                   <input
                     aria-label={`Task title for ${list.title}`}
                     type="text"
@@ -446,7 +627,9 @@ export default function TaskSixTodo() {
                   <textarea
                     aria-label={`Task description for ${list.title}`}
                     value={form.description}
-                    onChange={(event) => updateTaskForm(list.id, 'description', event.target.value)}
+                    onChange={(event) =>
+                      updateTaskForm(list.id, 'description', event.target.value)
+                    }
                     placeholder="Task description"
                     rows="2"
                   />
@@ -456,14 +639,18 @@ export default function TaskSixTodo() {
                       <input
                         type="date"
                         value={form.dueDate}
-                        onChange={(event) => updateTaskForm(list.id, 'dueDate', event.target.value)}
+                        onChange={(event) =>
+                          updateTaskForm(list.id, 'dueDate', event.target.value)
+                        }
                       />
                     </label>
                     <label>
                       Priority
                       <select
                         value={form.priority}
-                        onChange={(event) => updateTaskForm(list.id, 'priority', event.target.value)}
+                        onChange={(event) =>
+                          updateTaskForm(list.id, 'priority', event.target.value)
+                        }
                       >
                         {priorities.map((priority) => (
                           <option key={priority}>{priority}</option>
@@ -480,6 +667,7 @@ export default function TaskSixTodo() {
                   {priorities.map((priority) => {
                     const dropZoneId = `${list.id}:${priority}`;
                     const laneTasks = tasksByListAndPriority[dropZoneId] ?? [];
+
                     return (
                       <div
                         className={`priority-lane priority-lane--${priority.toLowerCase()} ${
@@ -502,39 +690,188 @@ export default function TaskSixTodo() {
                           <strong>{priority}</strong>
                           <span>{laneTasks.length}</span>
                         </div>
+
                         <div className="priority-lane__tasks">
                           {laneTasks.length === 0 ? (
                             <p>Drop tasks here</p>
                           ) : (
-                            laneTasks.map((task) => (
-                              <article
-                                className={`todo-task-card ${
-                                  draggedTask?.taskId === task.id ? 'is-dragging' : ''
-                                }`}
-                                draggable
-                                key={task.id}
-                                onDragStart={(event) => {
-                                  const payload = { taskId: task.id };
-                                  event.dataTransfer.setData('application/json', JSON.stringify(payload));
-                                  event.dataTransfer.effectAllowed = 'move';
-                                  setDraggedTask(payload);
-                                }}
-                                onDragEnd={() => {
-                                  setDraggedTask(null);
-                                  setActiveDropZone('');
-                                }}
-                              >
-                                <div className="todo-task-card__topline">
-                                  <span className="drag-handle" aria-hidden="true">⋮⋮</span>
-                                  <strong>{task.title}</strong>
-                                </div>
-                                {task.description && <p>{task.description}</p>}
-                                <div className="todo-task-card__meta">
-                                  <span>{task.dueDate ? `Due ${task.dueDate}` : 'No due date'}</span>
-                                  <span>Drag to move</span>
-                                </div>
-                              </article>
-                            ))
+                            laneTasks.map((task) => {
+                              const isEditing = editingTaskId === task.id;
+
+                              return (
+                                <article
+                                  className={`todo-task-card ${
+                                    task.completed ? 'is-completed' : ''
+                                  } ${
+                                    draggedTask?.taskId === task.id ? 'is-dragging' : ''
+                                  }`}
+                                  draggable={!isEditing}
+                                  key={task.id}
+                                  onDragStart={(event) => {
+                                    if (isEditing) {
+                                      event.preventDefault();
+                                      return;
+                                    }
+                                    const payload = { taskId: task.id };
+                                    event.dataTransfer.setData(
+                                      'application/json',
+                                      JSON.stringify(payload),
+                                    );
+                                    event.dataTransfer.effectAllowed = 'move';
+                                    setDraggedTask(payload);
+                                  }}
+                                  onDragEnd={() => {
+                                    setDraggedTask(null);
+                                    setActiveDropZone('');
+                                  }}
+                                >
+                                  {isEditing ? (
+                                    <form
+                                      className="task-edit-form"
+                                      onSubmit={(event) => handleSaveEdit(event, task)}
+                                    >
+                                      <label>
+                                        Task title
+                                        <input
+                                          type="text"
+                                          value={editTaskForm.title}
+                                          onChange={(event) =>
+                                            setEditTaskForm((current) => ({
+                                              ...current,
+                                              title: event.target.value,
+                                            }))
+                                          }
+                                          required
+                                        />
+                                      </label>
+
+                                      <label>
+                                        Description
+                                        <textarea
+                                          rows="3"
+                                          value={editTaskForm.description}
+                                          onChange={(event) =>
+                                            setEditTaskForm((current) => ({
+                                              ...current,
+                                              description: event.target.value,
+                                            }))
+                                          }
+                                        />
+                                      </label>
+
+                                      <div className="task-edit-form__row">
+                                        <label>
+                                          Due date
+                                          <input
+                                            type="date"
+                                            value={editTaskForm.dueDate}
+                                            onChange={(event) =>
+                                              setEditTaskForm((current) => ({
+                                                ...current,
+                                                dueDate: event.target.value,
+                                              }))
+                                            }
+                                          />
+                                        </label>
+
+                                        <label>
+                                          Priority
+                                          <select
+                                            value={editTaskForm.priority}
+                                            onChange={(event) =>
+                                              setEditTaskForm((current) => ({
+                                                ...current,
+                                                priority: event.target.value,
+                                              }))
+                                            }
+                                          >
+                                            {priorities.map((option) => (
+                                              <option key={option}>{option}</option>
+                                            ))}
+                                          </select>
+                                        </label>
+                                      </div>
+
+                                      <div className="task-edit-form__actions">
+                                        <button
+                                          className="task-action-button task-action-button--save"
+                                          type="submit"
+                                          disabled={loading}
+                                        >
+                                          Save changes
+                                        </button>
+                                        <button
+                                          className="task-action-button"
+                                          type="button"
+                                          onClick={cancelEditing}
+                                          disabled={loading}
+                                        >
+                                          Cancel
+                                        </button>
+                                      </div>
+                                    </form>
+                                  ) : (
+                                    <>
+                                      <div className="todo-task-card__topline">
+                                        <span className="drag-handle" aria-hidden="true">
+                                          ⋮⋮
+                                        </span>
+                                        <strong>{task.title}</strong>
+                                        <span
+                                          className={`task-status-badge ${
+                                            task.completed ? 'is-complete' : ''
+                                          }`}
+                                        >
+                                          {task.completed ? 'Completed' : 'Open'}
+                                        </span>
+                                      </div>
+
+                                      {task.description && <p>{task.description}</p>}
+
+                                      <div className="todo-task-card__meta">
+                                        <span>
+                                          {task.dueDate ? `Due ${task.dueDate}` : 'No due date'}
+                                        </span>
+                                        <span>{task.completed ? 'Done' : 'Drag to move'}</span>
+                                      </div>
+
+                                      <div className="todo-task-card__actions">
+                                        <button
+                                          className={`task-action-button ${
+                                            task.completed
+                                              ? 'task-action-button--reopen'
+                                              : 'task-action-button--complete'
+                                          }`}
+                                          type="button"
+                                          onClick={() => handleToggleComplete(task)}
+                                          disabled={loading}
+                                        >
+                                          {task.completed ? 'Reopen' : 'Complete'}
+                                        </button>
+
+                                        <button
+                                          className="task-action-button task-action-button--edit"
+                                          type="button"
+                                          onClick={() => beginEditing(task)}
+                                          disabled={loading}
+                                        >
+                                          Edit
+                                        </button>
+
+                                        <button
+                                          className="task-action-button task-action-button--delete"
+                                          type="button"
+                                          onClick={() => handleDeleteTask(task)}
+                                          disabled={loading}
+                                        >
+                                          Delete
+                                        </button>
+                                      </div>
+                                    </>
+                                  )}
+                                </article>
+                              );
+                            })
                           )}
                         </div>
                       </div>

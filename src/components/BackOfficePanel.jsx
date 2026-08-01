@@ -207,7 +207,11 @@ export default function BackOfficePanel() {
                 <th>Task Description</th>
                 <th>Task List Title</th>
                 <th>Create By (Email ID)</th>
+                <th>Status</th>
+                <th>Priority</th>
+                <th>Due Date</th>
                 <th>Creation Time</th>
+                <th>Last Updated</th>
               </tr>
             </thead>
             <tbody>
@@ -219,7 +223,11 @@ export default function BackOfficePanel() {
                     <td className="description-cell">{task.description || '—'}</td>
                     <td>{taskList?.title ?? 'Deleted list'}</td>
                     <td>{task.createdByEmail}</td>
+                    <td>{task.completed ? 'Completed' : 'Open'}</td>
+                    <td>{task.priority || 'Medium'}</td>
+                    <td>{task.dueDate || '—'}</td>
                     <td>{formatDate(task.createdAt)}</td>
+                    <td>{formatDate(task.updatedAt)}</td>
                   </tr>
                 );
               })}

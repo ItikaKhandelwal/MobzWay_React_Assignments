@@ -137,3 +137,23 @@ export async function queryFirebaseDocuments(collection, fieldPath, value, idTok
       ...decodeFields(result.document.fields),
     }));
 }
+
+export async function deleteFirebaseDocument(collection, documentId, idToken) {
+  if (!isFirebaseConfigured) throw new Error('Firebase is not configured.');
+
+  const response = await fetch(
+    `${firestoreBase}/${encodeURIComponent(collection)}/${encodeURIComponent(documentId)}`,
+    {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${idToken}` },
+    },
+  );
+
+  if (!response.ok) {
+    const payload = await response.json().catch(() => ({}));
+    const firebaseMessage = payload?.error?.message?.replaceAll('_', ' ');
+    throw new Error(firebaseMessage || 'Could not delete the Firebase document.');
+  }
+
+  return true;
+}

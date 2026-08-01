@@ -1396,3 +1396,135 @@ textarea:focus-visible {
     grid-template-columns: 1fr;
   }
 }
+
+/* Task 6: complete, edit and delete controls */
+.todo-task-card {
+  cursor: default;
+}
+
+.drag-handle {
+  cursor: grab;
+  user-select: none;
+}
+
+.todo-task-card.is-completed {
+  border-color: #b8e3d2;
+  background: #f3fbf7;
+}
+
+.todo-task-card.is-completed .todo-task-card__topline > strong {
+  color: #667085;
+  text-decoration: line-through;
+}
+
+.todo-task-card__topline > strong {
+  min-width: 0;
+  flex: 1;
+  overflow-wrap: anywhere;
+}
+
+.task-status-badge {
+  flex: 0 0 auto;
+  padding: 4px 7px;
+  border-radius: 999px;
+  color: #8a5a00;
+  background: #fff1c7;
+  font-size: 0.64rem;
+  font-weight: 850;
+  text-transform: uppercase;
+  letter-spacing: 0.035em;
+}
+
+.task-status-badge.is-complete {
+  color: #08775d;
+  background: #dff5eb;
+}
+
+.todo-task-card__actions,
+.task-edit-form__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-top: 10px;
+}
+
+.task-action-button {
+  min-height: 32px;
+  padding: 6px 9px;
+  border: 1px solid #d9deea;
+  border-radius: 8px;
+  color: #4d556a;
+  background: #fff;
+  font: inherit;
+  font-size: 0.72rem;
+  font-weight: 800;
+  cursor: pointer;
+  transition: transform 140ms ease, border-color 140ms ease, background 140ms ease;
+}
+
+.task-action-button:hover:not(:disabled) {
+  transform: translateY(-1px);
+  border-color: #aeb5c5;
+  background: #f7f8fc;
+}
+
+.task-action-button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.task-action-button--complete,
+.task-action-button--save {
+  color: #08775d;
+  border-color: #a9dcc8;
+  background: #e9f8f1;
+}
+
+.task-action-button--reopen {
+  color: #7e4f00;
+  border-color: #efd691;
+  background: #fff7dd;
+}
+
+.task-action-button--edit {
+  color: #4136c9;
+  border-color: #c9c5ff;
+  background: #f1efff;
+}
+
+.task-action-button--delete {
+  color: #a12635;
+  border-color: #f0bcc3;
+  background: #fff0f2;
+}
+
+.task-edit-form {
+  display: grid;
+  gap: 10px;
+}
+
+.task-edit-form label {
+  gap: 5px;
+  font-size: 0.72rem;
+}
+
+.task-edit-form input,
+.task-edit-form textarea,
+.task-edit-form select {
+  width: 100%;
+  min-height: 38px;
+  padding: 8px 9px;
+  font-size: 0.8rem;
+}
+
+.task-edit-form__row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+@media (max-width: 560px) {
+  .task-edit-form__row {
+    grid-template-columns: 1fr;
+  }
+}

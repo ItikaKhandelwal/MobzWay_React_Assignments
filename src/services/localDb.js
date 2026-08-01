@@ -8,7 +8,9 @@ const emptyDatabase = {
 };
 
 function makeId(prefix) {
-  const id = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+  const id =
+    globalThis.crypto?.randomUUID?.() ??
+    `${Date.now()}-${Math.random().toString(16).slice(2)}`;
   return `${prefix}-${id}`;
 }
 
@@ -107,7 +109,13 @@ export function getWorkspace(userId) {
   const database = readDatabase();
   return {
     taskLists: database.taskLists.filter((list) => list.createdById === userId),
-    tasks: database.tasks.filter((task) => task.createdById === userId),
+    tasks: database.tasks
+      .filter((task) => task.createdById === userId)
+      .map((task) => ({
+        completed: false,
+        completedAt: '',
+        ...task,
+      })),
   };
 }
 
@@ -138,6 +146,8 @@ export function createLocalTask(user, listId, details, providedId) {
     description: details.description.trim(),
     dueDate: details.dueDate || '',
     priority: details.priority || 'Medium',
+    completed: false,
+    completedAt: '',
     createdById: user.id,
     createdByEmail: user.email,
     createdAt: now,
@@ -161,7 +171,13 @@ export function updateLocalTask(taskId, updates) {
   database.tasks = database.tasks.map((task) => {
     if (task.id !== taskId) return task;
     previousListId = task.listId;
-    updatedTask = { ...task, ...updates, updatedAt: now };
+    updatedTask = {
+      completed: false,
+      completedAt: '',
+      ...task,
+      ...updates,
+      updatedAt: now,
+    };
     return updatedTask;
   });
 
@@ -176,6 +192,25 @@ export function updateLocalTask(taskId, updates) {
   return updatedTask;
 }
 
+export function deleteLocalTask(taskId) {
+  const database = readDatabase();
+  const taskToDelete = database.tasks.find((task) => task.id === taskId);
+
+  if (!taskToDelete) throw new Error('Task could not be found.');
+
+  const now = new Date().toISOString();
+  database.tasks = database.tasks.filter((task) => task.id !== taskId);
+  database.taskLists = database.taskLists.map((list) =>
+    list.id === taskToDelete.listId ? { ...list, updatedAt: now } : list,
+  );
+  writeDatabase(database);
+
+  return {
+    deletedTask: taskToDelete,
+    updatedAt: now,
+  };
+}
+
 export function replaceUserWorkspace(userId, taskLists, tasks) {
   const database = readDatabase();
   database.taskLists = [
@@ -184,7 +219,11 @@ export function replaceUserWorkspace(userId, taskLists, tasks) {
   ];
   database.tasks = [
     ...database.tasks.filter((task) => task.createdById !== userId),
-    ...tasks,
+    ...tasks.map((task) => ({
+      completed: false,
+      completedAt: '',
+      ...task,
+    })),
   ];
   writeDatabase(database);
 }
