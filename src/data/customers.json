@@ -1,0 +1,134 @@
+[
+  {
+    "id": 1,
+    "customer": "Branson Weimann",
+    "email": "branson@example.com",
+    "lastSeen": "2026-07-31",
+    "orders": 2,
+    "totalSpent": 296.31,
+    "latestPurchase": "2026-07-27T13:12:25",
+    "newsletter": true,
+    "segment": "Regular"
+  },
+  {
+    "id": 2,
+    "customer": "Anna Bruen",
+    "email": "anna@example.com",
+    "lastSeen": "2026-07-30",
+    "orders": 3,
+    "totalSpent": 647.91,
+    "latestPurchase": "2026-07-06T07:48:18",
+    "newsletter": false,
+    "segment": "VIP"
+  },
+  {
+    "id": 3,
+    "customer": "Gudrun Tromp",
+    "email": "gudrun@example.com",
+    "lastSeen": "2026-07-29",
+    "orders": 0,
+    "totalSpent": 0,
+    "latestPurchase": null,
+    "newsletter": true,
+    "segment": "New"
+  },
+  {
+    "id": 4,
+    "customer": "Florencio Roob",
+    "email": "florencio@example.com",
+    "lastSeen": "2026-07-26",
+    "orders": 1,
+    "totalSpent": 79.5,
+    "latestPurchase": "2026-07-20T10:22:11",
+    "newsletter": true,
+    "segment": "Regular"
+  },
+  {
+    "id": 5,
+    "customer": "Maddison Torp",
+    "email": "maddison@example.com",
+    "lastSeen": "2026-07-24",
+    "orders": 0,
+    "totalSpent": 0,
+    "latestPurchase": null,
+    "newsletter": true,
+    "segment": "New"
+  },
+  {
+    "id": 6,
+    "customer": "Rashawn Beer",
+    "email": "rashawn@example.com",
+    "lastSeen": "2026-07-22",
+    "orders": 3,
+    "totalSpent": 693.5,
+    "latestPurchase": "2026-07-19T10:03:18",
+    "newsletter": true,
+    "segment": "VIP"
+  },
+  {
+    "id": 7,
+    "customer": "Beth Hill",
+    "email": "beth@example.com",
+    "lastSeen": "2026-07-19",
+    "orders": 0,
+    "totalSpent": 0,
+    "latestPurchase": null,
+    "newsletter": true,
+    "segment": "New"
+  },
+  {
+    "id": 8,
+    "customer": "Brandyn Hoeger",
+    "email": "brandyn@example.com",
+    "lastSeen": "2026-07-18",
+    "orders": 5,
+    "totalSpent": 821.2,
+    "latestPurchase": "2026-07-17T16:35:00",
+    "newsletter": true,
+    "segment": "VIP"
+  },
+  {
+    "id": 9,
+    "customer": "Roy Schuster",
+    "email": "roy@example.com",
+    "lastSeen": "2026-07-17",
+    "orders": 1,
+    "totalSpent": 109.99,
+    "latestPurchase": "2026-07-15T11:20:00",
+    "newsletter": true,
+    "segment": "Regular"
+  },
+  {
+    "id": 10,
+    "customer": "Jakob Armstrong",
+    "email": "jakob@example.com",
+    "lastSeen": "2026-07-16",
+    "orders": 0,
+    "totalSpent": 0,
+    "latestPurchase": null,
+    "newsletter": false,
+    "segment": "New"
+  },
+  {
+    "id": 11,
+    "customer": "Janae Glover",
+    "email": "janae@example.com",
+    "lastSeen": "2026-07-14",
+    "orders": 4,
+    "totalSpent": 455.75,
+    "latestPurchase": "2026-07-10T09:15:30",
+    "newsletter": true,
+    "segment": "Regular"
+  },
+  {
+    "id": 12,
+    "customer": "Dina Tillman",
+    "email": "dina@example.com",
+    "lastSeen": "2026-07-12",
+    "orders": 6,
+    "totalSpent": 1044.4,
+    "latestPurchase": "2026-07-09T18:10:00",
+    "newsletter": true,
+    "segment": "VIP"
+  }
+]
