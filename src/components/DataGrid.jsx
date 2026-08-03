@@ -37,6 +37,7 @@ export default function DataGrid() {
 
     const filtered = customers.filter((customer) => {
       const matchesSegment = segment === 'All' || customer.segment === segment;
+      const latestPurchaseFormatted = customer.latestPurchase ? formatDate(customer.latestPurchase) : '';
       const searchableText = [
         customer.customer,
         customer.email,
@@ -44,6 +45,7 @@ export default function DataGrid() {
         customer.orders,
         customer.totalSpent,
         customer.latestPurchase,
+        latestPurchaseSearch,
       ]
         .join(' ')
         .toLowerCase();
@@ -109,7 +111,7 @@ export default function DataGrid() {
             type="search"
             value={query}
             onChange={(event) => setQuery(event.target.value)}
-            placeholder="Search customer, email, segment..."
+            placeholder="Search customer, email, segment, latest purchase..."
           />
         </label>
 
