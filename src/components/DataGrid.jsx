@@ -43,6 +43,7 @@ export default function DataGrid() {
         customer.segment,
         customer.orders,
         customer.totalSpent,
+        customer.latestPurchase,
       ]
         .join(' ')
         .toLowerCase();
