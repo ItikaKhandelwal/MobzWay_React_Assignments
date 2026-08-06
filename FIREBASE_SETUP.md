@@ -41,7 +41,11 @@ For Vercel:
 3. Add both variables for Production, Preview, and Development as needed.
 4. Redeploy the project after saving them.
 
-## 5. Create the authorised admin account
+## 5. Task 7 individual user login
+
+Any account created in Task 6 can log in to Task 7 with the same email and password. A normal Task 6 account can read only its own user record, task lists and tasks. No `admins` document is required for this individual view.
+
+## 6. Create the authorised admin account
 
 1. Go to **Firebase Authentication → Users**.
 2. Add an email/password user for the administrator.
@@ -57,14 +61,15 @@ email: your-admin-email@example.com
 
 The document ID, not the email field, grants admin access through the Firestore rules.
 
-## 6. Use the admin panel
+## 7. Use the back office panel
 
-- `admin / admin123` opens local demo data from the same browser only.
+- Enter a Task 6 email and password to open only that user’s individual workspace.
+- `admin / admin123` opens all local demo users from the same browser only.
 - Enter the authorised Firebase admin email in the **User ID** field and its Firebase password to load all shared users, task lists, and tasks.
 - Use **Refresh data** after another user signs up or changes tasks.
 - Use the **Lists** and **Tasks** buttons in the Users table, or the **Workspace owner** filter, to inspect one user's data individually.
 
-## 7. Test the complete flow
+## 8. Test the complete flow
 
 1. Sign up User A in a normal browser window.
 2. Sign up User B in an incognito window or a different device.

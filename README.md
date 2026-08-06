@@ -22,7 +22,8 @@ A ready-to-run React application covering all seven assignment tasks:
    - Add task title, description, due date and priority
    - Drag tasks between lists and High/Medium/Low priority lanes
 7. Back Office panel
-   - Static local demo login
+   - Task 6 user login for an individual workspace
+   - Static local admin login
    - Optional authorised Firebase admin login
    - Per-user workspace filtering
    - Users, Task Lists and Tasks data grids
@@ -83,7 +84,7 @@ User ID: admin
 Password: admin123
 ```
 
-Task 7 can filter lists and tasks for each user individually. With the static demo login it displays only data created in the same browser profile. With an authorised Firebase admin login it reads shared Firestore data, so users created on other browsers and devices appear after refresh. Firebase passwords are never stored or exposed; the password column shows a protected placeholder. In local demo mode, the password is retained only in browser local storage to support the assignment login flow and is masked in the admin panel.
+Task 7 accepts the same email and password created in Task 6. A normal Task 6 user opens only their own user record, lists and tasks. The static `admin / admin123` login displays all local users created in the same browser profile. An authorised Firebase admin reads shared Firestore data for every user, including users created in other browsers and devices. Firebase passwords are never stored or exposed; the password column shows a protected placeholder. In local demo mode, the password is retained only in browser local storage to support the assignment login flow and is masked in the panel.
 
 ## Production build
 
