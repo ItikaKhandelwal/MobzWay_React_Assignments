@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useDragAutoScroll } from '../hooks/useDragAutoScroll.js';
 
 const columnDefinitions = [
   { id: 'today', title: 'Today' },
@@ -23,6 +24,8 @@ export default function DragDropBoard() {
   const [board, setBoard] = useState(initialBoard);
   const [draggedTask, setDraggedTask] = useState(null);
   const [activeColumn, setActiveColumn] = useState(null);
+
+  useDragAutoScroll(Boolean(draggedTask));
 
   const moveTask = (taskId, fromColumn, toColumn) => {
     if (!fromColumn || !toColumn || fromColumn === toColumn) return;

@@ -97,7 +97,7 @@ export default function App() {
           <SectionHeading
             number="07"
             title="Back Office Panel"
-            description="Static admin login with Users, Task Lists and Tasks data grids."
+            description="View users individually, inspect their lists and tasks, and optionally load shared Firebase data."
           />
           <BackOfficePanel />
         </section>

@@ -21,6 +21,7 @@ import {
   queryFirebaseDocuments,
   saveFirebaseDocument,
 } from '../services/firebaseRest.js';
+import { useDragAutoScroll } from '../hooks/useDragAutoScroll.js';
 
 const priorities = ['High', 'Medium', 'Low'];
 
@@ -75,6 +76,8 @@ export default function TaskSixTodo() {
 
   const user = session?.user ?? null;
   const isCloudSession = session?.mode === 'firebase';
+
+  useDragAutoScroll(Boolean(draggedTask));
 
   const tasksByListAndPriority = useMemo(() => {
     return tasks.reduce((grouped, rawTask) => {

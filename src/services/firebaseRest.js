@@ -157,3 +157,31 @@ export async function deleteFirebaseDocument(collection, documentId, idToken) {
 
   return true;
 }
+
+export async function listFirebaseDocuments(collection, idToken) {
+  if (!isFirebaseConfigured) throw new Error('Firebase is not configured.');
+
+  const documents = [];
+  let pageToken = '';
+
+  do {
+    const params = new URLSearchParams({ pageSize: '1000' });
+    if (pageToken) params.set('pageToken', pageToken);
+
+    const response = await fetch(
+      `${firestoreBase}/${encodeURIComponent(collection)}?${params.toString()}`,
+      { headers: { Authorization: `Bearer ${idToken}` } },
+    );
+
+    const payload = await parseResponse(response);
+    documents.push(
+      ...(payload.documents ?? []).map((document) => ({
+        id: document.name.split('/').pop(),
+        ...decodeFields(document.fields),
+      })),
+    );
+    pageToken = payload.nextPageToken ?? '';
+  } while (pageToken);
+
+  return documents;
+}
